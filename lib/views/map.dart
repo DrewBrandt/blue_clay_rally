@@ -1,6 +1,6 @@
 import 'package:blue_clay_rally/models/track.dart';
 import 'package:blue_clay_rally/providers/app_state_provider.dart';
-import 'package:blue_clay_rally/providers/bunny_provider.dart';
+import 'package:blue_clay_rally/providers/marker_provider.dart';
 import 'package:blue_clay_rally/providers/gps_packet_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -19,8 +19,6 @@ class _MapState extends ConsumerState<MapDisplay> {
   final _mapController = MapController();
   @override
   Widget build(BuildContext context) {
-    // bool _follow = false; // toggle if you want
-    double speed = 1.0; // 1× playback
     final track = ref.watch(currentTrackProvider);
     final cps = ref.watch(appNotifierProvider)?.cps;
     bool follow = ref.watch(followProvider);
@@ -36,10 +34,6 @@ class _MapState extends ConsumerState<MapDisplay> {
       }
     });
 
-    final playback = track == null
-        ? const AsyncValue<LatLng?>.data(null)
-        : ref.watch(playbackProvider((track: track, speed: speed)));
-
     ref.listen(gpsPacketProvider, (o, n) {
       if (n != null && follow) {
         _mapController.move(n.tp.gps, _mapController.camera.zoom);
@@ -51,7 +45,8 @@ class _MapState extends ConsumerState<MapDisplay> {
       }
     });
 
-    final current = playback.value;
+    final bunny = ref.watch(markerProvider).value?.$1;
+    final jeep = ref.watch(markerProvider).value?.$2;
 
     final polylines = track == null
         ? const <Polyline>[]
@@ -115,14 +110,14 @@ class _MapState extends ConsumerState<MapDisplay> {
                   child: Icon(Icons.flag_rounded, color: Colors.black, size: size),
                 );
               }),
-            if (ref.watch(gpsPacketProvider) != null)
+            if (jeep != null)
               Marker(
                 width: 80,
                 height: 80,
-                point: ref.watch(gpsPacketProvider)!.tp.gps,
+                point: jeep,
                 child: Image.asset('assets/jeep2.png'),
               ),
-            if (current != null) Marker(width: 60, height: 60, point: current, child: Image.asset('assets/bunny2.png')),
+            if (bunny != null) Marker(width: 60, height: 60, point: bunny, child: Image.asset('assets/bunny2.png')),
           ],
         ),
         // Required attribution when using OSM data

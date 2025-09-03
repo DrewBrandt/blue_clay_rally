@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-String data = r"C:\Users\Snoopy\Documents\blue_clay_rally\lib\out.gpx";
+String data = r"C:\Users\Drew\Documents\blue_clay_rally\lib\out.gpx";
 
 class FakeGpsNotifier extends Notifier<Track?> {
   @override

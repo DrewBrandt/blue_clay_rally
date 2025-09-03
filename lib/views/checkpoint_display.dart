@@ -24,10 +24,10 @@ class CheckpointDisplay extends ConsumerWidget {
             Expanded(
               child: Stack(
                 children: [
-                  Align(alignment: AlignmentGeometry.centerLeft, child: Text(i == 0 ? 'Start' : 'Checkpoint $i')),
+                  Align(alignment: Alignment.centerLeft, child: Text(i == 0 ? 'Start' : 'Checkpoint $i')),
                   Align(child: Text(DateFormat('HH:mm:ss').format(c.time))),
                   Align(
-                    alignment: AlignmentGeometry.centerRight,
+                    alignment: Alignment.centerRight,
                     child: Text(c.delta.toFormattedString(),
                     ),
                   ),

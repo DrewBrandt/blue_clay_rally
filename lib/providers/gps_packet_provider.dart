@@ -73,15 +73,27 @@ class GpsPacketNotifier extends Notifier<GpsPacket?> {
     double minDist = double.infinity;
     int minIdx = i;
     while (!durationToCheck.isNegative && i < track.points.length - 1) {
-      durationToCheck -= track.points[i].time.difference(idxTime); // take off from # pts left to check
+      durationToCheck -= track.points[i].time.difference(
+        idxTime,
+      ); // take off from # pts left to check
 
       if (i < track.points.length - 2 &&
-          _pointInRectangleMeters(p.tp.gps, track.points[i].gps, track.points[i + 1].gps, _exactDistanceMargin)) {
+          _pointInRectangleMeters(
+            p.tp.gps,
+            track.points[i].gps,
+            track.points[i + 1].gps,
+            _exactDistanceMargin,
+          )) {
         state = p.copyWith(index: i);
         return;
       }
 
-      final d2 = _dist2Meters(p.tp.gps, track.points[i].gps, _mPerDegLat37, _mPerDegLon37);
+      final d2 = _dist2Meters(
+        p.tp.gps,
+        track.points[i].gps,
+        _mPerDegLat37,
+        _mPerDegLon37,
+      );
       if (d2 < minDist) {
         minDist = d2;
         minIdx = i;
@@ -94,6 +106,36 @@ class GpsPacketNotifier extends Notifier<GpsPacket?> {
   void reset() {
     state = state != null ? GpsPacket(tp: state!.tp) : null;
   }
+
+  void fixProgress() {
+    final ses = ref.read(appNotifierProvider);
+    final track = ref.read(currentTrackProvider);
+    if (ses != null &&
+        !ses.finished &&
+        ses.started &&
+        track != null &&
+        state != null) {
+      final cp = ses.cps.last;
+      var i = cp.idx;
+      double minDist = double.infinity;
+      int idx = i;
+      for (i; i < track.points.length; i++) {
+        final d = _dist2Meters(
+          state!.tp.gps,
+          track.points[i].gps,
+          _mPerDegLat37,
+          _mPerDegLon37,
+        );
+        if (d < minDist) {
+          minDist = d;
+          idx = i;
+        }
+      }
+      state = state!.copyWith(index: idx);
+    }
+  }
 }
 
-final gpsPacketProvider = NotifierProvider<GpsPacketNotifier, GpsPacket?>(GpsPacketNotifier.new);
+final gpsPacketProvider = NotifierProvider<GpsPacketNotifier, GpsPacket?>(
+  GpsPacketNotifier.new,
+);

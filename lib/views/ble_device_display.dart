@@ -30,12 +30,12 @@ class BleDeviceDisplay extends ConsumerWidget {
                     child: Stack(
                       children: [
                         Align(
-                          alignment: AlignmentGeometry.centerLeft,
+                          alignment: Alignment.centerLeft,
                           child: Text('${b.name}'),
                         ),
                         Align(child: Text('${b.rssi ?? 0}')),
                         Align(
-                          alignment: AlignmentGeometry.centerRight,
+                          alignment: Alignment.centerRight,
                           child: FutureBuilder<BleConnectionState>(
                             future: b.connectionState,
                             builder: (context, snapshot) {

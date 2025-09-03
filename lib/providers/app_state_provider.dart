@@ -29,6 +29,10 @@ final checkpointSingleProvider = Provider.family<Checkpoint?, int>((ref, id) {
   return ref.watch(appNotifierProvider)?.cps.elementAtOrNull(id);
 });
 
+final hasPreviousSessionProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
 //null if no track loaded
 // not null once a track loads, but does not save until track starts
 // saves every time a checkpoint is added or edited
@@ -50,9 +54,8 @@ class AppNotifier extends Notifier<SessionInfo?> {
     if (!_ready.isCompleted) _ready.complete();
     state = SessionInfo(trackFileType: 'none', trackFileName: 'none', cps: [], started: false, finished: false);
     state = null;
+    ref.read(hasPreviousSessionProvider.notifier).state = _storage.lastSession != null;
   }
-
-  bool get hasPreviousSession => _storage.lastSessionID != null;
 
   //three options:
   // load new file with no previous
@@ -81,6 +84,8 @@ class AppNotifier extends Notifier<SessionInfo?> {
     state = _storage.lastSession;
     await save(state);
     _storage.updateLastSession();
+    ref.read(gpsPacketProvider.notifier).fixProgress();
+    ref.read(hasPreviousSessionProvider.notifier).state = false;
   }
 
   Future<void> save(SessionInfo? newState) async {
