@@ -37,6 +37,7 @@ final markerProvider = StreamProvider<(LatLng? bunny, LatLng? jeep)>((ref) {
 
   timer = Timer.periodic(dt, (_) {
     bunny = (() {
+      if(cps.isEmpty) return pts.first.gps;
       final elapsed = DateTime.now().difference(cps.last.time);
       final playhead = cps.last.tp.time.add(elapsed);
 

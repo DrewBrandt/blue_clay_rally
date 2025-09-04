@@ -1,7 +1,9 @@
 // ignore_for_file: provider_scope
 import 'dart:io';
 import 'package:blue_clay_rally/providers/andoid_gps_provider.dart';
+import 'package:blue_clay_rally/providers/app_state_provider.dart';
 import 'package:blue_clay_rally/providers/screen_info_provider.dart';
+import 'package:blue_clay_rally/views/checkpoint_detailed_view.dart';
 import 'package:blue_clay_rally/views/map.dart';
 import 'package:blue_clay_rally/views/side_bar.dart';
 import 'package:blue_clay_rally/views/time_display.dart';
@@ -74,7 +76,9 @@ class _HomePage extends ConsumerState<HomePage> with SingleTickerProviderStateMi
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screen = ref.watch(screenInfoProvider);
-    final sheetWidth = screen.orientation == Orientation.portrait && screen.sizeClass == SizeClass.compact ? screen.size.width : 500.0;
+    final sheetWidth = screen.orientation == Orientation.portrait && screen.sizeClass == SizeClass.compact
+        ? screen.size.width
+        : 500.0;
     final following = ref.watch(followProvider);
     final double fabSize = switch (ref.watch(screenInfoProvider).sizeClass) {
       SizeClass.compact => 40,
@@ -145,8 +149,8 @@ class _HomePage extends ConsumerState<HomePage> with SingleTickerProviderStateMi
               ),
             ),
           ),
-
-          // Align(alignment: Alignment.center, child: CheckpointEditor(idx: 0,)),
+          if (ref.watch(checkpointEditWindowProvider) != null)
+            Align(alignment: Alignment.center, child: CheckpointEditor(idx: ref.read(checkpointEditWindowProvider)!)),
         ],
       ),
     );

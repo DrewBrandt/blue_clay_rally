@@ -29,6 +29,8 @@ final checkpointSingleProvider = Provider.family<Checkpoint?, int>((ref, id) {
   return ref.watch(appNotifierProvider)?.cps.elementAtOrNull(id);
 });
 
+final checkpointEditWindowProvider = StateProvider<int?>((_) => null);
+
 final hasPreviousSessionProvider = StateProvider<bool>((ref) {
   return false;
 });
@@ -106,7 +108,7 @@ class AppNotifier extends Notifier<SessionInfo?> {
 
     if (state != null && tps != null && tps.isNotEmpty) {
       final lastCp = state!.cps.lastOrNull;
-      final cp = Checkpoint.fromLast(tp: tps[idx], time:  DateTime.now(),idx: idx,last: lastCp);
+      final cp = Checkpoint.fromLast(tp: tps[idx], time: DateTime.now(), idx: idx, last: lastCp);
       var old = state;
       await save(state!.copyWith(cps: [...state!.cps, cp], started: true));
       if (!old!.started) {
@@ -126,8 +128,8 @@ class AppNotifier extends Notifier<SessionInfo?> {
       await save(
         state!.copyWith(
           cps: [
-            for (final item in state!.cps)
-              if (item.idx == o.idx) n else item,
+            for (int i = 0; i < state!.cps.length; i++)
+              if (state!.cps[i] == o) n else state!.cps[i],
           ],
         ),
       );

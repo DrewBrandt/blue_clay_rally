@@ -66,6 +66,8 @@ class GpsPacketNotifier extends Notifier<GpsPacket?> {
 
     if (p == null) return; // no new point to do anything with
 
+    if (p.index != null) return; // Recieved something over LoRa with index embedded
+    
     final timeSinceLastUpdate = p.tp.time.difference(o?.tp.time ?? p.tp.time);
     var durationToCheck = timeSinceLastUpdate + _durationMargin;
     var i = lastPassedIndex;
@@ -73,27 +75,15 @@ class GpsPacketNotifier extends Notifier<GpsPacket?> {
     double minDist = double.infinity;
     int minIdx = i;
     while (!durationToCheck.isNegative && i < track.points.length - 1) {
-      durationToCheck -= track.points[i].time.difference(
-        idxTime,
-      ); // take off from # pts left to check
+      durationToCheck -= track.points[i].time.difference(idxTime); // take off from # pts left to check
 
       if (i < track.points.length - 2 &&
-          _pointInRectangleMeters(
-            p.tp.gps,
-            track.points[i].gps,
-            track.points[i + 1].gps,
-            _exactDistanceMargin,
-          )) {
+          _pointInRectangleMeters(p.tp.gps, track.points[i].gps, track.points[i + 1].gps, _exactDistanceMargin)) {
         state = p.copyWith(index: i);
         return;
       }
 
-      final d2 = _dist2Meters(
-        p.tp.gps,
-        track.points[i].gps,
-        _mPerDegLat37,
-        _mPerDegLon37,
-      );
+      final d2 = _dist2Meters(p.tp.gps, track.points[i].gps, _mPerDegLat37, _mPerDegLon37);
       if (d2 < minDist) {
         minDist = d2;
         minIdx = i;
@@ -110,22 +100,13 @@ class GpsPacketNotifier extends Notifier<GpsPacket?> {
   void fixProgress() {
     final ses = ref.read(appNotifierProvider);
     final track = ref.read(currentTrackProvider);
-    if (ses != null &&
-        !ses.finished &&
-        ses.started &&
-        track != null &&
-        state != null) {
+    if (ses != null && !ses.finished && ses.started && track != null && state != null) {
       final cp = ses.cps.last;
       var i = cp.idx;
       double minDist = double.infinity;
       int idx = i;
       for (i; i < track.points.length; i++) {
-        final d = _dist2Meters(
-          state!.tp.gps,
-          track.points[i].gps,
-          _mPerDegLat37,
-          _mPerDegLon37,
-        );
+        final d = _dist2Meters(state!.tp.gps, track.points[i].gps, _mPerDegLat37, _mPerDegLon37);
         if (d < minDist) {
           minDist = d;
           idx = i;
@@ -136,6 +117,4 @@ class GpsPacketNotifier extends Notifier<GpsPacket?> {
   }
 }
 
-final gpsPacketProvider = NotifierProvider<GpsPacketNotifier, GpsPacket?>(
-  GpsPacketNotifier.new,
-);
+final gpsPacketProvider = NotifierProvider<GpsPacketNotifier, GpsPacket?>(GpsPacketNotifier.new);

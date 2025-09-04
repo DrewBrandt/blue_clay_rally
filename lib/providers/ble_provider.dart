@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:blue_clay_rally/models/checkpoint.dart';
 import 'package:blue_clay_rally/models/gps_packet.dart';
 import 'package:blue_clay_rally/models/track.dart';
+import 'package:blue_clay_rally/providers/app_state_provider.dart';
 import 'package:blue_clay_rally/providers/gps_packet_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,12 +35,14 @@ class BleNotifier extends Notifier<BleState> {
   BleDevice? _dev;
   BleCharacteristic? _rx, _tx;
   final _rxBuf = StringBuffer();
-  StreamSubscription? _subscription; // Declare a nullable StreamSubscription variable
+  StreamSubscription? _btSub; // Declare a nullable StreamSubscription variable
+  ProviderSubscription<List<Checkpoint>>? _cpUpdateSub;
   @override
   BleState build() {
     ref.onDispose(() async {
       await _tx?.notifications.unsubscribe();
       await _dev?.disconnect();
+      _cpUpdateSub?.close();
     });
     return BleState(status: BleStatus.idle);
   }
@@ -51,9 +55,9 @@ class BleNotifier extends Notifier<BleState> {
 
       _rx = await dev.getCharacteristic(nusRxChar, service: nusService);
       _tx = await dev.getCharacteristic(nusTxChar, service: nusService);
-      await _subscription?.cancel();
+      await _btSub?.cancel();
       await _tx!.notifications.subscribe();
-      _subscription = _tx!.onValueReceived.listen(
+      _btSub = _tx!.onValueReceived.listen(
         _onNotify,
         onError: (e, _) {
           state = state.copyWith(status: BleStatus.error, message: "Notify error: $e");
@@ -63,6 +67,14 @@ class BleNotifier extends Notifier<BleState> {
     } catch (_) {
       print('Not available');
     }
+
+    _cpUpdateSub = ref.listen(checkpointProvider, (List<Checkpoint>? o, List<Checkpoint> n) {
+      for (final c in n) {
+        if (!o!.contains(c)) {
+          sendText(_toLoRaCpCsv(cpIdx: n.indexOf(c), time: c.time, tpIdx: c.idx));
+        }
+      }
+    });
   }
 
   Future<void> startScan() async {
@@ -108,32 +120,111 @@ class BleNotifier extends Notifier<BleState> {
 
   void _onNotify(Uint8List data) {
     _rxBuf.write(String.fromCharCodes(data));
+
     for (;;) {
       final s = _rxBuf.toString();
       final i = s.indexOf('\n');
       if (i < 0) break;
 
-      final line = s.substring(0, i).trim();
-      _rxBuf.clear();
-      _rxBuf.write(s.substring(i + 1));
+      var line = s.substring(0, i).trim();
+      _rxBuf
+        ..clear()
+        ..write(s.substring(i + 1));
+      print(line);
 
       if (line.isEmpty || line.startsWith('DBG:')) continue;
-      final parts = line.split(',');
-      if (parts.length >= 3) {
-        print(line);
+
+      // Helper: strip a known prefix ("GPS"/"LoRa") and return the remainder
+      String? _payloadAfterPrefix(String src, String prefix) {
+        if (!src.startsWith(prefix)) return null;
+        var t = src.substring(prefix.length).trimLeft();
+        if (t.startsWith(',')) t = t.substring(1).trimLeft(); // allow "GPS,..." style
+        return t;
+      }
+
+      // --- GPS lines ---
+      if (line.startsWith('GPS')) {
+        final payload = _payloadAfterPrefix(line, 'GPS')!;
+        final parts = payload.split(',');
+        if (parts.length < 2) continue;
+
         final lat = double.tryParse(parts[0]);
         final lon = double.tryParse(parts[1]);
-        final alt = double.tryParse(parts[2]); // may be null
-        if (lat != null && lon != null && !(lat == 0.0 && lon == 0.0)) {
-          final tp = TrackPoint(
-            DateTime.now().toUtc(), // replace later with GPS TOD if you add it
-            LatLng(lat, lon),
-            alt,
-          );
-          ref.read(gpsPacketProvider.notifier).state = GpsPacket(tp: tp);
+        final alt = parts.length >= 3 ? double.tryParse(parts[2]) : null;
+
+        if (lat == null || lon == null || (lat == 0.0 && lon == 0.0)) continue;
+
+        final tp = TrackPoint(DateTime.now().toUtc(), LatLng(lat, lon), alt);
+        ref.read(gpsPacketProvider.notifier).state = GpsPacket(tp: tp);
+        final idx = ref.read(gpsPacketProvider)?.index ?? 0;
+        sendText(_toLoRaCsv(time: tp.time, lat: lat, lon: lon, alt: alt, idx: idx));
+        continue;
+      }
+      if (line.startsWith('LoRaCP')) {
+        final payload = _payloadAfterPrefix(line, 'LoRaCP');
+        if (payload != null) {
+          final parts = payload.split(',').map((e) => e.trim()).toList();
+
+          int? cpIdx, tpIdx;
+          DateTime? t;
+
+          if (parts.length >= 3 && int.tryParse(parts[0]) != null && int.tryParse(parts[1]) != null) {
+            cpIdx = int.tryParse(parts[0]);
+            tpIdx = int.tryParse(parts[1]);
+            t = DateTime.tryParse(parts[2])?.toUtc();
+          }
+
+          if (cpIdx != null && tpIdx != null && t != null) {
+            final cps = ref.read(checkpointProvider);
+            if (cpIdx >= ref.read(checkpointProvider).length) {
+              ref.read(appNotifierProvider.notifier).setCheckpoint();
+            }
+            final tp = ref.read(currentTrackProvider)?.points[tpIdx];
+            if (tp != null) {
+              ref
+                  .read(appNotifierProvider.notifier)
+                  .updateCheckpoint(
+                    cps[cpIdx],
+                    Checkpoint.fromLast(tp: tp, idx: tpIdx, time: t, last: cps.elementAtOrNull(cpIdx)),
+                  );
+            }
+          }
         }
+        continue;
+      }
+      // --- LoRa lines: support both old and new shapes ---
+      else if (line.startsWith('LoRa')) {
+        final payload = _payloadAfterPrefix(line, 'LoRa');
+        final parts = payload!.split(',').map((e) => e.trim()).toList();
+
+        DateTime? t;
+        int? idx;
+        double? lat, lon, alt;
+
+        if (parts.isNotEmpty && DateTime.tryParse(parts[0]) != null) {
+          t = DateTime.parse(parts[0]).toUtc();
+          lat = parts.length > 1 ? double.tryParse(parts[1]) : null;
+          lon = parts.length > 2 ? double.tryParse(parts[2]) : null;
+          alt = parts.length > 3 ? double.tryParse(parts[3]) : null;
+          idx = parts.length > 4 ? int.tryParse(parts[4]) : null;
+        }
+
+        if (idx == null || lat == null || lon == null || (lat == 0 && lon == 0)) continue;
+
+        final tp = TrackPoint(t ?? DateTime.now().toUtc(), LatLng(lat, lon), alt);
+        ref.read(gpsPacketProvider.notifier).update(GpsPacket(tp: tp, index: idx));
+
+        continue;
       }
     }
+  }
+
+  String _fmtTime(DateTime t) => t.toUtc().toIso8601String();
+  String _fmtNum(double? v, {int frac = 6}) => v == null ? '' : v.toStringAsFixed(frac);
+
+  String _toLoRaCsv({required DateTime time, required double lat, required double lon, double? alt, required int idx}) {
+    // Canonical: LoRa,time,lat,lon,alt,idx
+    return 'LoRa,${_fmtTime(time)},${_fmtNum(lat)},${_fmtNum(lon)},${_fmtNum(alt)},$idx';
   }
 
   Future<void> sendText(String s) async {
@@ -141,8 +232,17 @@ class BleNotifier extends Notifier<BleState> {
     await _rx!.write(Uint8List.fromList(s.codeUnits), withResponse: false);
   }
 
+  String _toLoRaCpCsv({required int cpIdx, required int tpIdx, required DateTime time}) =>
+      'LoRaCP,$cpIdx,$tpIdx,${_fmtTime(time)}';
+
+  Future<void> sendCheckpoint({required int cpIdx, required int tpIdx, DateTime? time}) async {
+    final t = (time ?? DateTime.now().toUtc());
+    await sendText(_toLoRaCpCsv(cpIdx: cpIdx, tpIdx: tpIdx, time: t));
+  }
+
   Future<void> disconnect() async {
     await _tx?.notifications.unsubscribe();
+    _cpUpdateSub?.close();
     await _dev?.disconnect();
     _dev = null;
     _rx = null;

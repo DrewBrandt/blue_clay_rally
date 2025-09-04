@@ -1,4 +1,5 @@
 import 'package:blue_clay_rally/models/checkpoint.dart';
+import 'package:blue_clay_rally/providers/app_state_provider.dart';
 import 'package:blue_clay_rally/utils/duration_ext.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,19 +27,16 @@ class CheckpointDisplay extends ConsumerWidget {
                 children: [
                   Align(alignment: Alignment.centerLeft, child: Text(i == 0 ? 'Start' : 'Checkpoint $i')),
                   Align(child: Text(DateFormat('HH:mm:ss').format(c.time))),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(c.delta.toFormattedString(),
-                    ),
-                  ),
+                  Align(alignment: Alignment.centerRight, child: Text(c.delta.toFormattedString())),
                 ],
               ),
             ),
 
             Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: PopupMenuButton(
-                itemBuilder: (context) => [PopupMenuItem<String>(value: 'Option 1', child: Text('Option 23'))],
+              padding: const EdgeInsets.only(left: 10, top: 3, bottom: 3),
+              child: IconButton.filledTonal(
+                onPressed: () => ref.read(checkpointEditWindowProvider.notifier).state = i,
+                icon: Icon(Icons.edit_outlined),
               ),
             ),
           ],
