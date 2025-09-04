@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 import 'package:blue_clay_rally/models/session_info.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 
 class HiveStorage {
   late LazyBox<String> _sessionData; // {sessionID: SessionInfoJSON}
@@ -30,12 +31,8 @@ class HiveStorage {
 
     try {
       lastSessionID = _lastSession.get('last_session_id');
-      lastSession = SessionInfo.fromJson(
-        jsonDecode(await _sessionData.get(lastSessionID) ?? ''),
-      );
-      if (lastSession!.started == false ||
-          DateTime.now().difference(lastSession!.cps[0].time) >
-              Duration(hours: 12)) {
+      lastSession = SessionInfo.fromJson(jsonDecode(await _sessionData.get(lastSessionID) ?? ''));
+      if (lastSession!.started == false || DateTime.now().difference(lastSession!.cps[0].time) > Duration(hours: 12)) {
         await _lastSession.delete('last_session_id');
         lastSession = null;
         lastSessionID = null;
@@ -45,9 +42,7 @@ class HiveStorage {
       lastSessionID = null;
       lastSession = null;
     }
-    _sessionID = (_sessionData.isEmpty
-        ? 0
-        : (_sessionData.keys.last as int) + 1);
+    _sessionID = (_sessionData.isEmpty ? 0 : (_sessionData.keys.last as int) + 1);
 
     return lastSession != null;
   }
@@ -57,9 +52,7 @@ class HiveStorage {
     int oldID = _sessionID!;
     try {
       _sessionID = id;
-      return SessionInfo.fromJson(
-        jsonDecode((await _sessionData.get(id ?? lastSessionID)) ?? ''),
-      );
+      return SessionInfo.fromJson(jsonDecode((await _sessionData.get(id ?? lastSessionID)) ?? ''));
     } catch (e) {
       _sessionID = oldID;
       return null;

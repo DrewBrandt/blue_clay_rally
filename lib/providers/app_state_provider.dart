@@ -57,6 +57,7 @@ class AppNotifier extends Notifier<SessionInfo?> {
     state = SessionInfo(trackFileType: 'none', trackFileName: 'none', cps: [], started: false, finished: false);
     state = null;
     ref.read(hasPreviousSessionProvider.notifier).state = _storage.lastSession != null;
+    print('Hive Initialized');
   }
 
   //three options:

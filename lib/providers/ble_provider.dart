@@ -64,8 +64,8 @@ class BleNotifier extends Notifier<BleState> {
         },
       );
       state = state.copyWith(status: BleStatus.connected, message: "connected");
-    } catch (_) {
-      print('Not available');
+    } catch (e) {
+      print('Not available: $e');
     }
 
     _cpUpdateSub = ref.listen(checkpointProvider, (List<Checkpoint>? o, List<Checkpoint> n) {
@@ -106,7 +106,7 @@ class BleNotifier extends Notifier<BleState> {
         ref.read(deviceProvider.notifier).state = devices;
       }
     });
-    await UniversalBle.startScan(scanFilter: ScanFilter());
+    await UniversalBle.startScan(scanFilter: ScanFilter(withServices: ["6E400001-B5A3-F393-E0A9-E50E24DCCA9E"]));
     await Future.delayed(const Duration(seconds: 6));
     await UniversalBle.stopScan();
 
@@ -178,6 +178,7 @@ class BleNotifier extends Notifier<BleState> {
             final cps = ref.read(checkpointProvider);
             if (cpIdx >= ref.read(checkpointProvider).length) {
               ref.read(appNotifierProvider.notifier).setCheckpoint();
+              continue;
             }
             final tp = ref.read(currentTrackProvider)?.points[tpIdx];
             if (tp != null) {
