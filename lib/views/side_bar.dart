@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:blue_clay_rally/models/gps_packet.dart';
+import 'package:blue_clay_rally/models/track.dart';
 import 'package:blue_clay_rally/providers/ble_provider.dart';
 import 'package:blue_clay_rally/providers/fake_gps_provider.dart';
 import 'package:blue_clay_rally/providers/gps_packet_provider.dart';
@@ -67,7 +68,7 @@ class SideBar extends ConsumerWidget {
                 final tp = ref.watch(fakeGpsProvider)?.points[val.toInt() - 1];
                 ref
                     .read(gpsPacketProvider.notifier)
-                    .update(tp == null ? null : GpsPacket(tp: tp, index: null));
+                    .update(tp == null ? null : GpsPacket(tp: TrackPoint(DateTime.now(), tp.gps, tp.alt), index: null));
                 ref.watch(fakeGpsIndexProvider.notifier).state = val.toInt();
               },
             ),
