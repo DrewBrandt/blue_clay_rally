@@ -106,7 +106,7 @@ void main() {
         await csvs.put(orphanId, ['a,b,c']);
         await tracks.put(orphanId, '1, 2, 3');
 
-        final now = DateTime.now().toUtc();
+        final now = DateTime.now();
         final good = _sessionInfo(
           started: true,
           finished: false,
@@ -144,7 +144,7 @@ void main() {
 
         // Make a "fresh" session inside the 12h window
         const sid = 42;
-        final t0 = DateTime.now().toUtc().subtract(const Duration(hours: 1));
+        final t0 = DateTime.now().subtract(const Duration(hours: 1));
         final sFresh = _sessionInfo(
           started: true,
           finished: false,
@@ -169,7 +169,7 @@ void main() {
         final lastBox2 = await Hive.openBox<int>('last_session');
 
         const sid2 = 99;
-        final oldT = DateTime.now().toUtc().subtract(const Duration(hours: 24));
+        final oldT = DateTime.now().subtract(const Duration(hours: 24));
         final sOld = _sessionInfo(
           started: true,
           finished: false,
@@ -192,7 +192,7 @@ void main() {
         await storage.init();
 
         // Create a recent, started session model
-        final t0 = DateTime.now().toUtc();
+        final t0 = DateTime.now();
         final info = _sessionInfo(
           started: true,
           finished: false,

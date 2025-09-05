@@ -219,7 +219,7 @@ void main() {
       final tracks = await Hive.openLazyBox<String>('tracks'); // <-- add this
       final lastBox = await Hive.openBox<int>('last_session');
 
-      final now = DateTime.now().toUtc();
+      final now = DateTime.now();
       final prev = SessionInfo(
         trackFileType: 'csv',
         trackFileName: 'prev.csv',

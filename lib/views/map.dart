@@ -76,7 +76,8 @@ class _MapState extends ConsumerState<MapDisplay> {
         },
         initialCenter: ref.watch(currentTrackProvider)?.center ?? LatLng(38.9, -77),
         initialZoom: 10,
-        backgroundColor: Theme.of(context).colorScheme.tertiaryContainer.withAlpha(220),
+        // backgroundColor: Theme.of(context).colorScheme.tertiaryContainer.withAlpha(220),
+        backgroundColor: Colors.white
       ),
       children: [
         TileLayer(

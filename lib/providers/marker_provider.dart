@@ -9,14 +9,10 @@ import 'package:latlong2/latlong.dart';
 
 final markerProvider = StreamProvider<(LatLng? bunny, LatLng? jeep)>((ref) {
   final ctrl = StreamController<(LatLng? bunny, LatLng? jeep)>();
-  final pts = ref.watch(currentTrackProvider)!.points;
+  final pts = ref.watch(currentTrackProvider)?.points;
   final cps = ref.watch(checkpointProvider);
+  // ref.watch(gpsPacketProvider);
   GpsPacket? o, n;
-
-  ref.listen(gpsPacketProvider, (previous, next) {
-    o = previous;
-    n = next;
-  });
 
   LatLng interp(TrackPoint a, TrackPoint b, DateTime t) {
     final totalMs = b.time.difference(a.time).inMilliseconds;
@@ -29,15 +25,15 @@ final markerProvider = StreamProvider<(LatLng? bunny, LatLng? jeep)>((ref) {
 
   LatLng? bunny, jeep;
 
-
   // 30 Hz updates is plenty smooth.
   const dt = Duration(milliseconds: 33);
   int seg = 0; // index of the "left" point in the current segment
   Timer? timer;
 
-  timer = Timer.periodic(dt, (_) {
+  void timerFunc(_) {
     bunny = (() {
-      if(cps.isEmpty) return pts.first.gps;
+      if(pts == null) return null;
+      if (cps.isEmpty) return pts.first.gps;
       final elapsed = DateTime.now().difference(cps.last.time);
       final playhead = cps.last.tp.time.add(elapsed);
 
@@ -48,24 +44,33 @@ final markerProvider = StreamProvider<(LatLng? bunny, LatLng? jeep)>((ref) {
 
       if (seg + 1 >= pts.length) {
         // Reached (or passed) end; emit last point and stop.
-        
+
         return pts.last.gps;
       }
 
       return interp(pts[seg], pts[seg + 1], playhead);
     })();
 
-  // JEEP
-  jeep = (() {
-    if (n == null) return null;
-    if (o == null) return n!.tp.gps;
-    final elapsed = DateTime.now().difference(n!.tp.time);
-    final playhead = o!.tp.time.add(elapsed);
-    return interp(o!.tp, n!.tp, playhead);
-  })();
+    // JEEP
+    jeep = (() {
+      if (o == null && n == null) return null;
+      if (n == null) return o!.tp.gps;
+      if (o == null) return n!.tp.gps;
+      final elapsed = DateTime.now().difference(n!.tp.time);
+      final playhead = o!.tp.time.add(elapsed);
+      return interp(o!.tp, n!.tp, playhead);
+    })();
 
-  ctrl.add((bunny, jeep));
-  });
+    ctrl.add((bunny, jeep));
+  }
+
+  ref.listen(gpsPacketProvider, (previous, next) {
+    o = previous;
+    n = next;
+    timerFunc(null);
+  }, fireImmediately: true);
+
+  timer = Timer.periodic(dt, timerFunc);
 
   ref.onDispose(() {
     timer?.cancel();

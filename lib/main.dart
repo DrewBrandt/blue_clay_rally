@@ -4,6 +4,7 @@ import 'package:blue_clay_rally/providers/andoid_gps_provider.dart';
 import 'package:blue_clay_rally/providers/app_state_provider.dart';
 import 'package:blue_clay_rally/providers/screen_info_provider.dart';
 import 'package:blue_clay_rally/views/checkpoint_detailed_view.dart';
+import 'package:blue_clay_rally/views/finish_sumary.dart';
 import 'package:blue_clay_rally/views/map.dart';
 import 'package:blue_clay_rally/views/side_bar.dart';
 import 'package:blue_clay_rally/views/time_display.dart';
@@ -42,7 +43,8 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePage();
 }
 
-class _HomePage extends ConsumerState<HomePage> with SingleTickerProviderStateMixin, FullScreenListener {
+class _HomePage extends ConsumerState<HomePage>
+    with SingleTickerProviderStateMixin, FullScreenListener {
   late final AnimationController _ctrl;
   late final Animation<Offset> _offset;
   bool _open = true;
@@ -50,7 +52,10 @@ class _HomePage extends ConsumerState<HomePage> with SingleTickerProviderStateMi
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
     _offset = Tween(
       end: const Offset(1, 0),
       begin: Offset.zero,
@@ -76,7 +81,9 @@ class _HomePage extends ConsumerState<HomePage> with SingleTickerProviderStateMi
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screen = ref.watch(screenInfoProvider);
-    final sheetWidth = screen.orientation == Orientation.portrait && screen.sizeClass == SizeClass.compact
+    final sheetWidth =
+        screen.orientation == Orientation.portrait &&
+            screen.sizeClass == SizeClass.compact
         ? screen.size.width
         : 500.0;
     final following = ref.watch(followProvider);
@@ -93,7 +100,10 @@ class _HomePage extends ConsumerState<HomePage> with SingleTickerProviderStateMi
         children: [
           MapDisplay(),
           // Time display
-          Align(alignment: Alignment.topCenter + Alignment(0, .1), child: TimeDisplay()),
+          Align(
+            alignment: Alignment.topCenter + Alignment(0, .1),
+            child: TimeDisplay(),
+          ),
 
           // Side sheet
           Positioned(
@@ -119,15 +129,25 @@ class _HomePage extends ConsumerState<HomePage> with SingleTickerProviderStateMi
             right: 24,
             child: IconButton(
               style: IconButton.styleFrom(
-                backgroundColor: _open ? theme.colorScheme.primaryContainer : theme.colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.all(Radius.circular(fabRadius))),
+                backgroundColor: _open
+                    ? theme.colorScheme.primaryContainer
+                    : theme.colorScheme.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadiusGeometry.all(
+                    Radius.circular(fabRadius),
+                  ),
+                ),
               ),
               onPressed: _toggle,
               tooltip: 'Toggle config panel',
               icon: Icon(
                 size: fabSize,
-                color: _open ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onPrimary,
-                _open ? Icons.keyboard_double_arrow_right_rounded : Icons.keyboard_double_arrow_left_rounded,
+                color: _open
+                    ? theme.colorScheme.onPrimaryContainer
+                    : theme.colorScheme.onPrimary,
+                _open
+                    ? Icons.keyboard_double_arrow_right_rounded
+                    : Icons.keyboard_double_arrow_left_rounded,
               ),
             ),
           ),
@@ -138,19 +158,33 @@ class _HomePage extends ConsumerState<HomePage> with SingleTickerProviderStateMi
             child: IconButton(
               style: IconButton.styleFrom(
                 backgroundColor: theme.colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.all(Radius.circular(fabRadius))),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadiusGeometry.all(
+                    Radius.circular(fabRadius),
+                  ),
+                ),
               ),
-              onPressed: () => ref.read(followProvider.notifier).state = !following,
+              onPressed: () =>
+                  ref.read(followProvider.notifier).state = !following,
               tooltip: 'Toggle GPS Follow',
               icon: Icon(
                 size: fabSize,
                 color: theme.colorScheme.onPrimary,
-                following ? Icons.my_location_rounded : Icons.location_searching_rounded,
+                following
+                    ? Icons.my_location_rounded
+                    : Icons.location_searching_rounded,
               ),
             ),
           ),
-          if (ref.watch(checkpointEditWindowProvider) != null)
-            Align(alignment: Alignment.center, child: CheckpointEditor(idx: ref.read(checkpointEditWindowProvider)!)),
+          if (ref.watch(finishProvider))
+            Align(alignment: Alignment.center, child: FinishSummary()),
+          if (!ref.watch(finishProvider) && ref.watch(checkpointEditWindowProvider) != null)
+            Align(
+              alignment: Alignment.center,
+              child: CheckpointEditor(
+                idx: ref.read(checkpointEditWindowProvider)!,
+              ),
+            ),
         ],
       ),
     );

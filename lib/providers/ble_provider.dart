@@ -6,6 +6,7 @@ import 'package:blue_clay_rally/models/gps_packet.dart';
 import 'package:blue_clay_rally/models/track.dart';
 import 'package:blue_clay_rally/providers/app_state_provider.dart';
 import 'package:blue_clay_rally/providers/gps_packet_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -22,13 +23,17 @@ const String targetNamePrefix = "ESP32-NUS-";
 
 enum BleStatus { off, idle, scanning, connecting, connected, error }
 
-final deviceProvider = StateProvider<Set<BleDevice>>((ref) {
-  return {};
+final deviceProvider = StateProvider<List<BleDevice>>((ref) {
+  return [];
 });
 
 @freezed
 abstract class BleState with _$BleState {
-  factory BleState({required BleStatus status, String? deviceId, String? message}) = _BleState;
+  factory BleState({
+    required BleStatus status,
+    String? deviceId,
+    String? message,
+  }) = _BleState;
 }
 
 class BleNotifier extends Notifier<BleState> {
@@ -52,6 +57,7 @@ class BleNotifier extends Notifier<BleState> {
       await dev.connect();
 
       await dev.discoverServices();
+      await dev.requestMtu(512);
 
       _rx = await dev.getCharacteristic(nusRxChar, service: nusService);
       _tx = await dev.getCharacteristic(nusTxChar, service: nusService);
@@ -60,62 +66,83 @@ class BleNotifier extends Notifier<BleState> {
       _btSub = _tx!.onValueReceived.listen(
         _onNotify,
         onError: (e, _) {
-          state = state.copyWith(status: BleStatus.error, message: "Notify error: $e");
+          state = state.copyWith(
+            status: BleStatus.error,
+            message: "Notify error: $e",
+          );
         },
       );
       state = state.copyWith(status: BleStatus.connected, message: "connected");
     } catch (e) {
       print('Not available: $e');
     }
-
-    _cpUpdateSub = ref.listen(checkpointProvider, (List<Checkpoint>? o, List<Checkpoint> n) {
-      for (final c in n) {
-        if (!o!.contains(c)) {
-          sendText(_toLoRaCpCsv(cpIdx: n.indexOf(c), time: c.time, tpIdx: c.idx));
-        }
-      }
-    });
   }
 
   Future<void> startScan() async {
     final avail = await UniversalBle.getBluetoothAvailabilityState();
     if (avail != AvailabilityState.poweredOn) {
       try {
-        final b = await UniversalBle.enableBluetooth(timeout: const Duration(seconds: 5));
+        final b = await UniversalBle.enableBluetooth(
+          timeout: const Duration(seconds: 5),
+        );
         if (b) {
-          state = state.copyWith(deviceId: null, message: "BT is Idle", status: BleStatus.idle);
+          state = state.copyWith(
+            deviceId: null,
+            message: "BT is Idle",
+            status: BleStatus.idle,
+          );
         } else {
           throw StateError('BT is Off');
         }
       } catch (_) {
-        state = state.copyWith(deviceId: null, message: "BT is Off", status: BleStatus.off);
+        state = state.copyWith(
+          deviceId: null,
+          message: "BT is Off",
+          status: BleStatus.off,
+        );
         return;
       }
     }
 
     state = state.copyWith(status: BleStatus.scanning, message: "scanning");
-    ref.read(deviceProvider.notifier).state = {};
-
-    final devices = LinkedHashSet<BleDevice>(
-      equals: (a, b) => a.deviceId.toLowerCase() == b.deviceId.toLowerCase(),
-      hashCode: (d) => d.deviceId.toLowerCase().hashCode,
-    );
+    ref.read(deviceProvider.notifier).state = [];
     final sub = UniversalBle.scanStream.listen((d) {
-      if (d.name?.toUpperCase().contains(targetNamePrefix.toUpperCase()) ?? false) {
-        devices.add(d);
-        ref.read(deviceProvider.notifier).state = devices;
+      final ok = (d.name ?? '').toUpperCase().contains(
+        targetNamePrefix.toUpperCase(),
+      );
+      if (!ok) return;
+
+      // Build a new list (immutability) so Riverpod has a new object identity
+      final list = ref.read(deviceProvider);
+      if (!list.any(
+        (x) => x.deviceId.toLowerCase() == d.deviceId.toLowerCase(),
+      )) {
+        ref.read(deviceProvider.notifier).state = [...list, d];
+        print(d);
       }
     });
-    await UniversalBle.startScan(scanFilter: ScanFilter(withServices: ["6E400001-B5A3-F393-E0A9-E50E24DCCA9E"]));
+
+    // if (kIsWeb) {
+    await UniversalBle.startScan(
+      scanFilter: ScanFilter(
+        withServices: ["6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
+      ),
+    );
+    // } else {
+    //   await UniversalBle.startScan();
+    // }
     await Future.delayed(const Duration(seconds: 6));
     await UniversalBle.stopScan();
 
     await sub.cancel();
-    if (devices.isEmpty) {
-      state = state.copyWith(status: BleStatus.error, message: "No Devices Found");
+    if (state.status == BleStatus.connected) {
       return;
     }
-    state = state.copyWith(deviceId: null, message: "BT is Idle", status: BleStatus.idle);
+    state = state.copyWith(
+      deviceId: null,
+      message: "BT is Idle",
+      status: BleStatus.idle,
+    );
   }
 
   void _onNotify(Uint8List data) {
@@ -130,15 +157,16 @@ class BleNotifier extends Notifier<BleState> {
       _rxBuf
         ..clear()
         ..write(s.substring(i + 1));
-      print(line);
+      // print(line);
 
       if (line.isEmpty || line.startsWith('DBG:')) continue;
-
+      // print(line);
       // Helper: strip a known prefix ("GPS"/"LoRa") and return the remainder
       String? _payloadAfterPrefix(String src, String prefix) {
         if (!src.startsWith(prefix)) return null;
         var t = src.substring(prefix.length).trimLeft();
-        if (t.startsWith(',')) t = t.substring(1).trimLeft(); // allow "GPS,..." style
+        if (t.startsWith(','))
+          t = t.substring(1).trimLeft(); // allow "GPS,..." style
         return t;
       }
 
@@ -154,10 +182,12 @@ class BleNotifier extends Notifier<BleState> {
 
         if (lat == null || lon == null || (lat == 0.0 && lon == 0.0)) continue;
 
-        final tp = TrackPoint(DateTime.now().toUtc(), LatLng(lat, lon), alt);
-        ref.read(gpsPacketProvider.notifier).state = GpsPacket(tp: tp);
+        final tp = TrackPoint(DateTime.now(), LatLng(lat, lon), alt);
+        ref.read(gpsPacketProvider.notifier).update(GpsPacket(tp: tp));
         final idx = ref.read(gpsPacketProvider)?.index ?? 0;
-        sendText(_toLoRaCsv(time: tp.time, lat: lat, lon: lon, alt: alt, idx: idx));
+        sendText(
+          _toLoRaCsv(time: tp.time, lat: lat, lon: lon, alt: alt, idx: idx),
+        );
         continue;
       }
       if (line.startsWith('LoRaCP')) {
@@ -168,10 +198,12 @@ class BleNotifier extends Notifier<BleState> {
           int? cpIdx, tpIdx;
           DateTime? t;
 
-          if (parts.length >= 3 && int.tryParse(parts[0]) != null && int.tryParse(parts[1]) != null) {
+          if (parts.length >= 3 &&
+              int.tryParse(parts[0]) != null &&
+              int.tryParse(parts[1]) != null) {
             cpIdx = int.tryParse(parts[0]);
             tpIdx = int.tryParse(parts[1]);
-            t = DateTime.tryParse(parts[2])?.toUtc();
+            t = DateTime.tryParse(parts[2]);
           }
 
           if (cpIdx != null && tpIdx != null && t != null) {
@@ -186,7 +218,12 @@ class BleNotifier extends Notifier<BleState> {
                   .read(appNotifierProvider.notifier)
                   .updateCheckpoint(
                     cps[cpIdx],
-                    Checkpoint.fromLast(tp: tp, idx: tpIdx, time: t, last: cps.elementAtOrNull(cpIdx)),
+                    Checkpoint.fromLast(
+                      tp: tp,
+                      idx: tpIdx,
+                      time: t,
+                      last: cps.elementAtOrNull(cpIdx),
+                    ),
                   );
             }
           }
@@ -203,27 +240,41 @@ class BleNotifier extends Notifier<BleState> {
         double? lat, lon, alt;
 
         if (parts.isNotEmpty && DateTime.tryParse(parts[0]) != null) {
-          t = DateTime.parse(parts[0]).toUtc();
+          t = DateTime.parse(parts[0]);
           lat = parts.length > 1 ? double.tryParse(parts[1]) : null;
           lon = parts.length > 2 ? double.tryParse(parts[2]) : null;
           alt = parts.length > 3 ? double.tryParse(parts[3]) : null;
           idx = parts.length > 4 ? int.tryParse(parts[4]) : null;
         }
 
-        if (idx == null || lat == null || lon == null || (lat == 0 && lon == 0)) continue;
+        if (idx == null || lat == null || lon == null || (lat == 0 && lon == 0))
+          continue;
 
-        final tp = TrackPoint(t ?? DateTime.now().toUtc(), LatLng(lat, lon), alt);
-        ref.read(gpsPacketProvider.notifier).update(GpsPacket(tp: tp, index: idx));
+        final tp = TrackPoint(
+          t ?? DateTime.now(),
+          LatLng(lat, lon),
+          alt,
+        );
+        ref
+            .read(gpsPacketProvider.notifier)
+            .update(GpsPacket(tp: tp, index: idx));
 
         continue;
       }
     }
   }
 
-  String _fmtTime(DateTime t) => t.toUtc().toIso8601String();
-  String _fmtNum(double? v, {int frac = 6}) => v == null ? '' : v.toStringAsFixed(frac);
+  String _fmtTime(DateTime t) => t.toIso8601String();
+  String _fmtNum(double? v, {int frac = 6}) =>
+      v == null ? '' : v.toStringAsFixed(frac);
 
-  String _toLoRaCsv({required DateTime time, required double lat, required double lon, double? alt, required int idx}) {
+  String _toLoRaCsv({
+    required DateTime time,
+    required double lat,
+    required double lon,
+    double? alt,
+    required int idx,
+  }) {
     // Canonical: LoRa,time,lat,lon,alt,idx
     return 'LoRa,${_fmtTime(time)},${_fmtNum(lat)},${_fmtNum(lon)},${_fmtNum(alt)},$idx';
   }
@@ -233,11 +284,18 @@ class BleNotifier extends Notifier<BleState> {
     await _rx!.write(Uint8List.fromList(s.codeUnits), withResponse: false);
   }
 
-  String _toLoRaCpCsv({required int cpIdx, required int tpIdx, required DateTime time}) =>
-      'LoRaCP,$cpIdx,$tpIdx,${_fmtTime(time)}';
+  String _toLoRaCpCsv({
+    required int cpIdx,
+    required int tpIdx,
+    required DateTime time,
+  }) => 'LoRaCP,$cpIdx,$tpIdx,${_fmtTime(time)}';
 
-  Future<void> sendCheckpoint({required int cpIdx, required int tpIdx, DateTime? time}) async {
-    final t = (time ?? DateTime.now().toUtc());
+  Future<void> sendCheckpoint({
+    required int cpIdx,
+    required int tpIdx,
+    DateTime? time,
+  }) async {
+    final t = (time ?? DateTime.now());
     await sendText(_toLoRaCpCsv(cpIdx: cpIdx, tpIdx: tpIdx, time: t));
   }
 

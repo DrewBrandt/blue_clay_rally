@@ -91,6 +91,11 @@ class GpsPacketNotifier extends Notifier<GpsPacket?> {
       i++;
     }
     state = p.copyWith(index: minIdx);
+      // Format: ISO time, lat, lon, ele (extend as you like)
+      final lat = p.tp.gps.latitude.toStringAsFixed(7);
+      final lon = p.tp.gps.longitude.toStringAsFixed(7);
+      final ele = (p.tp.alt ?? 0).toStringAsFixed(2);
+      ref.read(appNotifierProvider.notifier).logCsvRow('${DateTime.now()},$lat,$lon,$ele');
   }
 
   void reset() {

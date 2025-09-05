@@ -89,7 +89,7 @@ Track _parseGpxString(String xml) {
           // skipped++;
           continue; // skip invalid points instead of throwing
         }
-        final tp = TrackPoint(t.toUtc(), LatLng(lat, lon), p.ele);
+        final tp = TrackPoint(t, LatLng(lat, lon), p.ele);
         tp.speed = pts.isNotEmpty ? _calcSpeedBetweenPoints(pts.last, tp) : 0.0;
         pts.add(tp);
 
@@ -139,7 +139,7 @@ Track _parseCsvString(String csv) {
   final pts = <TrackPoint>[];
   for (int i = 1; i < data.length; i++) {
     var line = data[i];
-    final t = DateTime.parse(line[colIndexes[0]!]).toUtc();
+    final t = DateTime.parse(line[colIndexes[0]!]);
     final lat = (line[colIndexes[1]!] as num).toDouble();
     final lon = (line[colIndexes[2]!] as num).toDouble();
     final ele = colIndexes.containsKey(3) ? (line[colIndexes[3]!] as num?)?.toDouble() : null;

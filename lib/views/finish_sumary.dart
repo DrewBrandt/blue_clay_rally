@@ -6,6 +6,7 @@ import 'package:blue_clay_rally/views/common/section_subtitle.dart';
 import 'package:blue_clay_rally/views/common/text_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:intl/intl.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -32,7 +33,10 @@ class FinishSummary extends ConsumerWidget {
                 ),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: LightIconButton(tooltip: 'Close', iconData: Icons.close_rounded, onPressed: () {}),
+                  child: LightIconButton(tooltip: 'Close', iconData: Icons.close_rounded, onPressed: () {
+                            ref.read(finishProvider.notifier).state = false;
+
+                  }),
                 ),
               ],
             ),
@@ -46,7 +50,9 @@ class FinishSummary extends ConsumerWidget {
                 LightIconButton(
                   tooltip: 'Export Checkpoint JSON',
                   iconData: MdiIcons.fileExportOutline,
-                  onPressed: () {},
+                  onPressed: () {
+                ref.read(appNotifierProvider.notifier).exportJson(suggestedName: 'RCR_session');
+                  },
                 ),
               ],
             ),
@@ -79,9 +85,12 @@ class FinishSummary extends ConsumerWidget {
             Divider(color: theme.dividerColor, thickness: 1),
             SizedBox(height: 20),
             Row(children: [
-              DarkTextButton(text: 'Export GPX', tooltip: 'Export the driven track as a GPX file', onPressed: () {}),
+              DarkTextButton(text: 'Export GPX', tooltip: 'Export the driven track as a GPX file', onPressed: () {
+              }),
               Spacer(),
-              DarkTextButton(text: 'Export CSV', tooltip: 'Export the driven track as a CSV file', onPressed: () {}),
+              DarkTextButton(text: 'Export CSV', tooltip: 'Export the driven track as a CSV file', onPressed: () {
+                ref.read(appNotifierProvider.notifier).exportCsv(suggestedName: 'RCR_session');
+              }),
             ],)
           ],
         ),
@@ -105,3 +114,5 @@ Widget _pointRow(Checkpoint cp, TextTheme textTheme) {
     ],
   );
 }
+
+final finishProvider = StateProvider<bool>((_) => false);

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:blue_clay_rally/models/checkpoint.dart';
 import 'package:blue_clay_rally/providers/app_state_provider.dart';
+import 'package:blue_clay_rally/providers/ble_provider.dart';
 import 'package:blue_clay_rally/views/common/date_time_editor.dart';
 import 'package:blue_clay_rally/views/common/icon_button.dart';
 import 'package:blue_clay_rally/views/common/section_subtitle.dart';
@@ -17,10 +18,14 @@ class CheckpointEditor extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print(build);
     final cp = ref.watch(checkpointSingleProvider(idx));
     final theme = Theme.of(context);
     return Container(
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), color: Colors.black.withAlpha(150)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        color: Colors.black.withAlpha(150),
+      ),
       width: 500,
       child: Padding(
         padding: const EdgeInsets.all(30.0),
@@ -29,15 +34,55 @@ class CheckpointEditor extends ConsumerWidget {
           children: [
             Stack(
               children: [
-                Align(alignment: Alignment.center, child: SectionTitle('Edit Checkpoint')),
+                Align(
+                  alignment: Alignment.center,
+                  child: SectionTitle('Edit Checkpoint'),
+                ),
                 Align(
                   alignment: Alignment.centerRight,
                   child: LightIconButton(
                     tooltip: 'Close',
                     iconData: Icons.close_rounded,
                     onPressed: () {
-                      ref.read(checkpointEditWindowProvider.notifier).state = null;
+                      ref.read(checkpointEditWindowProvider.notifier).state =
+                          null;
                     },
+                  ),
+                ),
+                Visibility(
+                  visible: () {
+                    print(
+                      ref
+                              .watch(deviceProvider)
+                              .firstOrNull
+                              ?.name
+                              ?.contains('-1') ??
+                          false,
+                    );
+                    return ref
+                            .watch(deviceProvider)
+                            .firstOrNull
+                            ?.name
+                            ?.contains('-1') ??
+                        false;
+                  }(),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: LightIconButton(
+                      tooltip: 'Send',
+                      iconData: Icons.arrow_forward,
+                      onPressed: () async {
+                        if (cp != null) {
+                          await ref
+                              .read(bleProvider.notifier)
+                              .sendCheckpoint(
+                                cpIdx: idx,
+                                tpIdx: cp.idx,
+                                time: cp.time,
+                              );
+                        }
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -45,7 +90,10 @@ class CheckpointEditor extends ConsumerWidget {
             SizedBox(height: 20),
             Divider(color: theme.dividerColor, thickness: 1),
             SizedBox(height: 10),
-            Align(alignment: Alignment.centerLeft, child: SectionSubTitle('Date/Time')),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SectionSubTitle('Date/Time'),
+            ),
             SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -53,26 +101,40 @@ class CheckpointEditor extends ConsumerWidget {
                 value: cp?.time ?? DateTime.now(),
                 useYear: false,
                 onChanged: (d) {
-                  if (cp == null || d == null || d.isAtSameMomentAs(cp.time)) return;
-                  ref.read(appNotifierProvider.notifier).updateCheckpoint(cp, cp.copyWith(time: d));
+                  print('onChanged');
+                  if (cp == null || d == null || d.isAtSameMomentAs(cp.time))
+                    return;
+                  print('edited');
+                  ref
+                      .read(appNotifierProvider.notifier)
+                      .updateCheckpoint(cp, cp.copyWith(time: d));
                 },
               ),
             ),
             SizedBox(height: 20),
             Divider(color: theme.dividerColor, thickness: 1),
             SizedBox(height: 10),
-            Align(alignment: Alignment.centerLeft, child: SectionSubTitle('GPS Point')),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SectionSubTitle('GPS Point'),
+            ),
             SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Row(children: [Text('${cp?.tp.gps.latitude}'), Spacer(), Text('${cp?.tp.gps.longitude}')]),
+              child: Row(
+                children: [
+                  Text('${cp?.tp.gps.latitude}'),
+                  Spacer(),
+                  Text('${cp?.tp.gps.longitude}'),
+                ],
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: CheckpointIdxControl(
                 cpIdx: idx,
                 min: 0,
-                max: ref.read(currentTrackProvider)?.points.length ?? 1 - 1,
+                max: ref.watch(currentTrackProvider)?.points.length ?? 1 - 1,
               ),
             ),
           ],
@@ -83,14 +145,20 @@ class CheckpointEditor extends ConsumerWidget {
 }
 
 class CheckpointIdxControl extends ConsumerStatefulWidget {
-  const CheckpointIdxControl({super.key, required this.cpIdx, required this.min, required this.max});
+  const CheckpointIdxControl({
+    super.key,
+    required this.cpIdx,
+    required this.min,
+    required this.max,
+  });
 
   final int cpIdx;
   final int min;
   final int max;
 
   @override
-  ConsumerState<CheckpointIdxControl> createState() => _CheckpointIdxControlState();
+  ConsumerState<CheckpointIdxControl> createState() =>
+      _CheckpointIdxControlState();
 }
 
 class _CheckpointIdxControlState extends ConsumerState<CheckpointIdxControl> {
@@ -132,7 +200,10 @@ class _CheckpointIdxControlState extends ConsumerState<CheckpointIdxControl> {
   @override
   Widget build(BuildContext context) {
     // Keep textbox in sync with external updates (but don't stomp while typing)
-    ref.listen<Checkpoint?>(checkpointSingleProvider(widget.cpIdx), (prev, next) {
+    ref.listen<Checkpoint?>(checkpointSingleProvider(widget.cpIdx), (
+      prev,
+      next,
+    ) {
       final v = (next?.idx ?? widget.min).toString();
       if (!_focus.hasFocus && _ctrl.text != v) {
         _squelch = true;
@@ -153,7 +224,10 @@ class _CheckpointIdxControlState extends ConsumerState<CheckpointIdxControl> {
             focusNode: _focus,
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.next,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(5),
+            ],
             decoration: _dec('Index'),
             onSubmitted: (_) => _commit(),
           ),
@@ -170,7 +244,15 @@ class _CheckpointIdxControlState extends ConsumerState<CheckpointIdxControl> {
               final c = cp;
               if (c == null || newIdx == c.idx) return;
 
-              ref.read(appNotifierProvider.notifier).updateCheckpoint(c, c.copyWith(idx: newIdx, tp: ref.read(currentTrackProvider)!.points[newIdx]));
+              ref
+                  .read(appNotifierProvider.notifier)
+                  .updateCheckpoint(
+                    c,
+                    c.copyWith(
+                      idx: newIdx,
+                      tp: ref.read(currentTrackProvider)!.points[newIdx],
+                    ),
+                  );
 
               if (!_focus.hasFocus) {
                 _squelch = true;
@@ -217,7 +299,9 @@ class _CheckpointIdxControlState extends ConsumerState<CheckpointIdxControl> {
     final cp = ref.read(checkpointSingleProvider(widget.cpIdx));
     if (cp == null || clamped == cp.idx) return;
 
-    ref.read(appNotifierProvider.notifier).updateCheckpoint(cp, cp.copyWith(idx: clamped));
+    ref
+        .read(appNotifierProvider.notifier)
+        .updateCheckpoint(cp, cp.copyWith(idx: clamped));
 
     // Normalize textbox if clamped
     if (_ctrl.text != clamped.toString()) {
