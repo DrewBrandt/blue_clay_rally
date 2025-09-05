@@ -20,7 +20,7 @@ jobs:
       - name: Build web
         run: |
           # For project pages:
-          flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+          flutter build web --release --wasm --base-href "/${{ github.event.repository.name }}/"
           # If you host at the root (user.github.io), use: --base-href "/"
 
       - name: Add .nojekyll and 404 fallback
