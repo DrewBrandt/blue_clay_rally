@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:blue_clay_rally/models/checkpoint.dart';
+import 'package:blue_clay_rally/models/gps_packet.dart';
 import 'package:blue_clay_rally/models/session_info.dart';
 import 'package:blue_clay_rally/models/track.dart';
 import 'package:blue_clay_rally/providers/ble_provider.dart';
@@ -308,6 +309,7 @@ class AppNotifier extends Notifier<SessionInfo?> {
     await ref
         .read(bleProvider.notifier)
         .sendCheckpoint(cpIdx: i, tpIdx: n.idx, time: n.time);
+    ref.read(gpsPacketProvider.notifier).update(GpsPacket(tp: n.tp, index: n.idx));
   }
 
   Future<void> finish() async {

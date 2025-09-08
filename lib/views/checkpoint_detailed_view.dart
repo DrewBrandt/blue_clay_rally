@@ -18,7 +18,6 @@ class CheckpointEditor extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    print(build);
     final cp = ref.watch(checkpointSingleProvider(idx));
     final theme = Theme.of(context);
     return Container(
@@ -51,14 +50,6 @@ class CheckpointEditor extends ConsumerWidget {
                 ),
                 Visibility(
                   visible: () {
-                    print(
-                      ref
-                              .watch(deviceProvider)
-                              .firstOrNull
-                              ?.name
-                              ?.contains('-1') ??
-                          false,
-                    );
                     return ref
                             .watch(deviceProvider)
                             .firstOrNull
@@ -102,8 +93,9 @@ class CheckpointEditor extends ConsumerWidget {
                 useYear: false,
                 onChanged: (d) {
                   print('onChanged');
-                  if (cp == null || d == null || d.isAtSameMomentAs(cp.time))
+                  if (cp == null || d == null || d.isAtSameMomentAs(cp.time)) {
                     return;
+                  }
                   print('edited');
                   ref
                       .read(appNotifierProvider.notifier)
@@ -301,7 +293,13 @@ class _CheckpointIdxControlState extends ConsumerState<CheckpointIdxControl> {
 
     ref
         .read(appNotifierProvider.notifier)
-        .updateCheckpoint(cp, cp.copyWith(idx: clamped));
+        .updateCheckpoint(
+          cp,
+          cp.copyWith(
+            idx: clamped,
+            tp: ref.read(currentTrackProvider)!.points[clamped],
+          ),
+        );
 
     // Normalize textbox if clamped
     if (_ctrl.text != clamped.toString()) {

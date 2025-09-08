@@ -235,7 +235,13 @@ class SideBar extends ConsumerWidget {
             SizedBox(height:scrSize),
             Stack(
               children: [
-                SectionSubTitle('Bluetooth'),
+                Row(
+                  children: [
+                    SectionSubTitle('Bluetooth'),
+                    SizedBox(width: 20,),
+                    LightIconButton(tooltip: '', iconData: ref.watch(packetRecievedProvider) == null ? Icons.signal_wifi_statusbar_null_rounded : Icons.signal_wifi_4_bar_rounded, onPressed: ref.watch(bleProvider).status == BleStatus.connected ? () {} : null)
+                  ],
+                ),
                 Align(
                   alignment: Alignment.centerRight,
                   child: IconButton.filled(

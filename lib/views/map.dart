@@ -28,7 +28,10 @@ class _MapState extends ConsumerState<MapDisplay> {
         // Delay a frame to ensure map is laid out
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _mapController.fitCamera(
-            CameraFit.bounds(bounds: LatLngBounds(next.min, next.max), padding: const EdgeInsets.all(100)),
+            CameraFit.bounds(
+              bounds: LatLngBounds(next.min, next.max),
+              padding: const EdgeInsets.all(100),
+            ),
           );
         });
       }
@@ -41,7 +44,10 @@ class _MapState extends ConsumerState<MapDisplay> {
     });
     ref.listen(followProvider, (o, n) {
       if (n && ref.read(gpsPacketProvider) != null) {
-        _mapController.move(ref.read(gpsPacketProvider)!.tp.gps, _mapController.camera.zoom);
+        _mapController.move(
+          ref.read(gpsPacketProvider)!.tp.gps,
+          _mapController.camera.zoom,
+        );
       }
     });
 
@@ -50,7 +56,10 @@ class _MapState extends ConsumerState<MapDisplay> {
 
     final polylines = track == null
         ? const <Polyline>[]
-        : _buildSpeedColoredPolylines(track.points, ref.watch(gpsPacketProvider)?.index ?? 0);
+        : _buildSpeedColoredPolylines(
+            track.points,
+            ref.watch(gpsPacketProvider)?.index ?? 0,
+          );
 
     return FlutterMap(
       mapController: _mapController,
@@ -67,17 +76,21 @@ class _MapState extends ConsumerState<MapDisplay> {
               break;
             default:
               if (ref.read(gpsPacketProvider) != null) {
-                _mapController.move(ref.read(gpsPacketProvider)!.tp.gps, _mapController.camera.zoom);
+                _mapController.move(
+                  ref.read(gpsPacketProvider)!.tp.gps,
+                  _mapController.camera.zoom,
+                );
               }
               // Ignore zoom-only sources: scrollWheel, doubleTap, doubleTapHold,
               // doubleTapZoomAnimationController, multi-finger pinch, etc.
               break;
           }
         },
-        initialCenter: ref.watch(currentTrackProvider)?.center ?? LatLng(38.9, -77),
+        initialCenter:
+            ref.watch(currentTrackProvider)?.center ?? LatLng(38.9, -77),
         initialZoom: 10,
         // backgroundColor: Theme.of(context).colorScheme.tertiaryContainer.withAlpha(220),
-        backgroundColor: Colors.white
+        backgroundColor: Colors.white,
       ),
       children: [
         TileLayer(
@@ -90,9 +103,34 @@ class _MapState extends ConsumerState<MapDisplay> {
           PolylineLayer(
             polylines: [
               Polyline(
-                points: [for (var i = 0; i < track!.points.length; i += 1) track.points[i].gps],
-                color: Colors.black,
+                points: [
+                  for (var i = 0; i < track!.points.length; i += 1)
+                    track.points[i].gps,
+                ],
+                color: Colors.black54,
                 strokeWidth: 5,
+              ),
+              Polyline(
+                points: track.points
+                    .where(
+                      (p) =>
+                          p.time.isAfter(
+                            track
+                                .points[ref.watch(trackIndexProvider) ?? 0]
+                                .time,
+                          ) &&
+                          p.time.isBefore(
+                            track
+                                .points[ref.watch(trackIndexProvider) ?? 0]
+                                .time
+                                .add(Duration(minutes: 5)),
+                          ),
+                    )
+                    .map((e) => e.gps)
+                    .toList(),
+
+                color: Colors.black,
+                strokeWidth: 9,
               ),
               ...polylines,
             ],
@@ -108,7 +146,11 @@ class _MapState extends ConsumerState<MapDisplay> {
                   height: size,
                   point: cp.tp.gps,
                   alignment: Alignment(.5, -.6),
-                  child: Icon(Icons.flag_rounded, color: Colors.black, size: size),
+                  child: Icon(
+                    Icons.flag_rounded,
+                    color: Colors.black,
+                    size: size,
+                  ),
                 );
               }),
             if (jeep != null)
@@ -118,7 +160,13 @@ class _MapState extends ConsumerState<MapDisplay> {
                 point: jeep,
                 child: Image.asset('assets/jeep2.png'),
               ),
-            if (bunny != null) Marker(width: 60, height: 60, point: bunny, child: Image.asset('assets/bunny2.png')),
+            if (bunny != null)
+              Marker(
+                width: 60,
+                height: 60,
+                point: bunny,
+                child: Image.asset('assets/bunny2.png'),
+              ),
           ],
         ),
         // Required attribution when using OSM data
@@ -142,7 +190,10 @@ Color _colorForSpeed(double mph) {
   return Colors.purple;
 }
 
-List<Polyline> _buildSpeedColoredPolylines(List<TrackPoint> pts, int currentTrackIndex) {
+List<Polyline> _buildSpeedColoredPolylines(
+  List<TrackPoint> pts,
+  int currentTrackIndex,
+) {
   if (pts.length < 2) return const [];
   final lines = <Polyline>[];
 
@@ -153,13 +204,21 @@ List<Polyline> _buildSpeedColoredPolylines(List<TrackPoint> pts, int currentTrac
   for (var i = 1; i < pts.length; i++) {
     final a = pts[i - 1];
     final b = pts[i];
-    final segColor = i <= currentTrackIndex ? Colors.blueGrey : _colorForSpeed(_speedMph(a));
+    final segColor = i <= currentTrackIndex
+        ? Colors.blueGrey
+        : _colorForSpeed(_speedMph(a));
 
     // start or continue a run of same-colored segments
     if (currentColor == null || segColor != currentColor) {
       // flush previous run
       if (current.length >= 2) {
-        lines.add(Polyline(points: List.of(current), strokeWidth: 3, color: currentColor!));
+        lines.add(
+          Polyline(
+            points: List.of(current),
+            strokeWidth: 3,
+            color: currentColor!,
+          ),
+        );
       }
       currentColor = segColor;
       current = [a.gps, b.gps];

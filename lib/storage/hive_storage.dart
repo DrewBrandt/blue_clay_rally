@@ -171,8 +171,9 @@ class HiveStorage {
     _requireInit();
     final sid = _sessionID!;
     final json = await _sessionData.get(sid);
-    if (json == null || json.isEmpty)
+    if (json == null || json.isEmpty) {
       throw StateError('No session JSON to export.');
+    }
 
     final name = suggestedName ?? 'session_${sid}_info';
     await FileSaver.instance.saveAs(
@@ -243,7 +244,7 @@ class HiveStorage {
       int i = 0;
       while (true) {
         final k = _csvKey(key, i);
-        if (!await _csv.containsKey(k)) break;
+        if (!_csv.containsKey(k)) break;
         await _csv.delete(k);
         i++;
       }

@@ -26,6 +26,7 @@ enum BleStatus { off, idle, scanning, connecting, connected, error }
 final deviceProvider = StateProvider<List<BleDevice>>((ref) {
   return [];
 });
+final packetRecievedProvider = StateProvider<String?>((ref) => null);
 
 @freezed
 abstract class BleState with _$BleState {
@@ -103,8 +104,9 @@ class BleNotifier extends Notifier<BleState> {
         return;
       }
     }
-
-    state = state.copyWith(status: BleStatus.scanning, message: "scanning");
+    if (state.status != BleStatus.connected) {
+      state = state.copyWith(status: BleStatus.scanning, message: "scanning");
+    }
     ref.read(deviceProvider.notifier).state = [];
     final sub = UniversalBle.scanStream.listen((d) {
       final ok = (d.name ?? '').toUpperCase().contains(
@@ -160,19 +162,20 @@ class BleNotifier extends Notifier<BleState> {
       // print(line);
 
       if (line.isEmpty || line.startsWith('DBG:')) continue;
-      // print(line);
+      print(line);
       // Helper: strip a known prefix ("GPS"/"LoRa") and return the remainder
-      String? _payloadAfterPrefix(String src, String prefix) {
+      String? payloadAfterPrefix(String src, String prefix) {
         if (!src.startsWith(prefix)) return null;
         var t = src.substring(prefix.length).trimLeft();
-        if (t.startsWith(','))
+        if (t.startsWith(',')) {
           t = t.substring(1).trimLeft(); // allow "GPS,..." style
+        }
         return t;
       }
 
       // --- GPS lines ---
       if (line.startsWith('GPS')) {
-        final payload = _payloadAfterPrefix(line, 'GPS')!;
+        final payload = payloadAfterPrefix(line, 'GPS')!;
         final parts = payload.split(',');
         if (parts.length < 2) continue;
 
@@ -181,7 +184,11 @@ class BleNotifier extends Notifier<BleState> {
         final alt = parts.length >= 3 ? double.tryParse(parts[2]) : null;
 
         if (lat == null || lon == null || (lat == 0.0 && lon == 0.0)) continue;
-
+        ref.read(packetRecievedProvider.notifier).state = line;
+        Timer(
+          Duration(milliseconds: 250),
+          () => ref.read(packetRecievedProvider.notifier).state = null,
+        );
         final tp = TrackPoint(DateTime.now(), LatLng(lat, lon), alt);
         ref.read(gpsPacketProvider.notifier).update(GpsPacket(tp: tp));
         final idx = ref.read(gpsPacketProvider)?.index ?? 0;
@@ -191,7 +198,7 @@ class BleNotifier extends Notifier<BleState> {
         continue;
       }
       if (line.startsWith('LoRaCP')) {
-        final payload = _payloadAfterPrefix(line, 'LoRaCP');
+        final payload = payloadAfterPrefix(line, 'LoRaCP');
         if (payload != null) {
           final parts = payload.split(',').map((e) => e.trim()).toList();
 
@@ -232,7 +239,7 @@ class BleNotifier extends Notifier<BleState> {
       }
       // --- LoRa lines: support both old and new shapes ---
       else if (line.startsWith('LoRa')) {
-        final payload = _payloadAfterPrefix(line, 'LoRa');
+        final payload = payloadAfterPrefix(line, 'LoRa');
         final parts = payload!.split(',').map((e) => e.trim()).toList();
 
         DateTime? t;
@@ -247,14 +254,14 @@ class BleNotifier extends Notifier<BleState> {
           idx = parts.length > 4 ? int.tryParse(parts[4]) : null;
         }
 
-        if (idx == null || lat == null || lon == null || (lat == 0 && lon == 0))
+        if (idx == null ||
+            lat == null ||
+            lon == null ||
+            (lat == 0 && lon == 0)) {
           continue;
+        }
 
-        final tp = TrackPoint(
-          t ?? DateTime.now(),
-          LatLng(lat, lon),
-          alt,
-        );
+        final tp = TrackPoint(t ?? DateTime.now(), LatLng(lat, lon), alt);
         ref
             .read(gpsPacketProvider.notifier)
             .update(GpsPacket(tp: tp, index: idx));

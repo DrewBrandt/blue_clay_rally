@@ -11,23 +11,23 @@ class TimeDisplay extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(50)),
-        color: t.colorScheme.secondary.withAlpha(200),
+        color: (ref.watch(deltaProvider).startsWith('-') ? const Color.fromARGB(255, 55, 102, 3) : const Color.fromARGB(255, 147, 40, 32)).withAlpha(250),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(15, 3, 20, 8),
+        padding: const EdgeInsets.fromLTRB(20, 5, 25, 10),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               ref.watch(deltaProvider),
-              style: t.textTheme.headlineLarge?.copyWith(color: t.colorScheme.onSecondary, fontSize: 40),
+              style: t.textTheme.headlineLarge?.copyWith(color: Colors.white.withAlpha(230), fontSize: 40, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             Tooltip(
               message: 'Elapsed / Remaining',
               child: Text(
                 '${ref.watch(elapsedProvider)} / ${ref.watch(remainingProvider)}',
-                style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onPrimary),
+                style: t.textTheme.bodyLarge?.copyWith(color: Colors.white.withAlpha(230), fontWeight: FontWeight.bold),
               ),
             ),
           ],

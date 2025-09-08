@@ -11,7 +11,6 @@ class BleDeviceDisplay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) { // <-- WidgetRef
     final ble = ref.read(bleProvider.notifier); 
-    print('build');      // grab once
     return Tooltip(
       message: 'Connect',
       child: MouseRegion(
