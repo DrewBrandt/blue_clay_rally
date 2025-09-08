@@ -1,0 +1,39 @@
+order: Track C -> Track B -> Track A
+
+Files used: c-tony -> b edited -> a edited
+
+Tony's data was considerably short on day 1
+
+my data (edited) used ChatGPT and some speed hysteresis to get as close as possible, but I couldn't find anything to match time perfectly.
+
+ChatGPT Speed Hysteresis params:
+
+# Coarse hysteresis parameters (global)
+TAU = 5.0               # seconds (EMA smoothing)
+V_STOP = 0.050          # m/s (enter stop at/under this, after T_STOP)
+V_MOVE = 0.060          # m/s (exit stop above this, after T_MOVE)
+T_STOP = 20.0           # seconds persistence to enter stop
+T_MOVE = 20.0           # seconds persistence to exit stop
+
+App got data from Day 1 good, but day 2 and three had to be manually reconstructed.
+
+note to self, checkpoints need to be double checked for where Zach actually marks them. At the track break or at the actual physical location of the trucks
+do we need to cut out when they slow down for CPs or only the actual stopped time? it makes a difference of multiple mminutes
+
+there may be CSV data still in the app's storage, but idk how to get it at the moment. Need a way to view the size of csv storage boxes and pick out the large ones, if they exist.
+otherwise get GPS data from Gaia from dad
+
+track total timing seems to be similar to what Gaia reported as the "total moving time"
+
+Zach says he uses an algorithm in Excel to clean the data.
+
+App improvements:
+offline map
+elevation "ticker" that shows upcoming elevation changes
+3D map??
+allow everyone to connect and place markers on the map
+waypoint placement/display
+web version
+
+
+if a checkpoint lands on a "removed" point with time delta of 0, the app crashes/doesnt save data properly. space out "removed points" by some time t > 0
