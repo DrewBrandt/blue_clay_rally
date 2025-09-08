@@ -37,3 +37,7 @@ web version
 
 
 if a checkpoint lands on a "removed" point with time delta of 0, the app crashes/doesnt save data properly. space out "removed points" by some time t > 0
+
+dad/pete notes:
+hardware (gps) redundancy
+cases for devices to protect from damage
