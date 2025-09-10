@@ -50,7 +50,7 @@ class _AppRootState extends ConsumerState<AppRoot> with WidgetsBindingObserver {
     if (!kIsWeb && Platform.isAndroid) {
       try {
         _gpsSub = await androidGps(ref); // your hardened version
-      } catch (e, st) {
+      } catch (e) {
         // optional: log
       }
     }
@@ -82,7 +82,7 @@ class _AppRootState extends ConsumerState<AppRoot> with WidgetsBindingObserver {
 
 
 class MyApp extends ConsumerWidget {
-  MyApp({super.key});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

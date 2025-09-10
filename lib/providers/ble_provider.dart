@@ -7,7 +7,6 @@ import 'package:blue_clay_rally/models/track.dart';
 import 'package:blue_clay_rally/providers/app_state_provider.dart';
 import 'package:blue_clay_rally/providers/gps_packet_provider.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
